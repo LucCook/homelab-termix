@@ -297,6 +297,22 @@ export function Auth({ onLogin }: AuthProps) {
       .finally(() => setDbHealthChecking(false));
   }, [showServerConfig]);
 
+  const hasLogin = passwordLoginAllowed && !firstUser;
+  const hasSignup = (passwordLoginAllowed || firstUser) && registrationAllowed;
+  const hasOIDC = oidcConfigured;
+  const hasAnyAuth = hasLogin || hasSignup || hasOIDC;
+
+  useEffect(() => {
+    if (view !== "login" && view !== "register" && view !== "external") return;
+    if (view === "login" && !hasLogin) {
+      if (hasOIDC) setView("external");
+      else if (hasSignup) setView("register");
+    } else if (view === "register" && !hasSignup) {
+      if (hasLogin) setView("login");
+      else if (hasOIDC) setView("external");
+    }
+  }, [view, hasLogin, hasSignup, hasOIDC]);
+
   useEffect(() => {
     const checkElectron = async () => {
       if (isInElectronWebView()) {
@@ -467,6 +483,10 @@ export function Auth({ onLogin }: AuthProps) {
     e.preventDefault();
     if (!username.trim()) {
       toast.error(t("errors.requiredField"));
+      return;
+    }
+    if (!hasLogin) {
+      toast.error(t("errors.passwordLoginDisabled"));
       return;
     }
     setLoading(true);
@@ -898,17 +918,9 @@ export function Auth({ onLogin }: AuthProps) {
     );
 
   const TAB_ITEMS: { id: AuthView; label: string; show: boolean }[] = [
-    {
-      id: "login",
-      label: t("common.login"),
-      show: passwordLoginAllowed && !firstUser,
-    },
-    {
-      id: "register",
-      label: t("common.register"),
-      show: (passwordLoginAllowed || firstUser) && registrationAllowed,
-    },
-    { id: "external", label: t("auth.external"), show: oidcConfigured },
+    { id: "login", label: t("common.login"), show: hasLogin },
+    { id: "register", label: t("common.register"), show: hasSignup },
+    { id: "external", label: t("auth.external"), show: hasOIDC },
   ];
 
   return (
@@ -1149,7 +1161,17 @@ export function Auth({ onLogin }: AuthProps) {
             {/* Login / Register / External */}
             {(view === "login" ||
               view === "register" ||
-              view === "external") && (
+              view === "external") &&
+              (!hasAnyAuth ? (
+                <div className="flex flex-col gap-2 text-center">
+                  <h1 className="text-xl font-bold">
+                    {t("auth.authenticationDisabled")}
+                  </h1>
+                  <p className="text-xs text-muted-foreground">
+                    {t("auth.authenticationDisabledDesc")}
+                  </p>
+                </div>
+              ) : (
               <div className="flex flex-col gap-5">
                 <div className="flex border border-border overflow-hidden">
                   {TAB_ITEMS.filter((item) => item.show).map((item) => (
@@ -1215,7 +1237,7 @@ export function Auth({ onLogin }: AuthProps) {
                   </div>
                 )}
 
-                {view === "login" && (
+                {view === "login" && hasLogin && (
                   <form onSubmit={handleLogin} className="flex flex-col gap-4">
                     <Field label={t("common.username")} htmlFor="login-user">
                       <div className="relative">
@@ -1281,7 +1303,7 @@ export function Auth({ onLogin }: AuthProps) {
                   </form>
                 )}
 
-                {view === "register" && (
+                {view === "register" && hasSignup && (
                   <form
                     onSubmit={handleRegister}
                     className="flex flex-col gap-4"
@@ -1342,7 +1364,7 @@ export function Auth({ onLogin }: AuthProps) {
 
                 <Separator />
                 <p className="text-center text-xs text-muted-foreground">
-                  {view === "login" && registrationAllowed ? (
+                  {view === "login" && hasSignup ? (
                     <>
                       {t("auth.noAccount", "Don't have an account?")}{" "}
                       <button
@@ -1352,9 +1374,7 @@ export function Auth({ onLogin }: AuthProps) {
                         {t("common.register")}
                       </button>
                     </>
-                  ) : view === "register" &&
-                    passwordLoginAllowed &&
-                    !firstUser ? (
+                  ) : view === "register" && hasLogin ? (
                     <>
                       {t("auth.hasAccount", "Already have an account?")}{" "}
                       <button
@@ -1383,7 +1403,7 @@ export function Auth({ onLogin }: AuthProps) {
                   </select>
                 </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
       </div>

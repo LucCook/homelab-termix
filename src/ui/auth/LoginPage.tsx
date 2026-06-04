@@ -292,11 +292,28 @@ export function Auth({
       });
   }, [setDbError, firstUserToastShown, showServerConfig, t]);
 
+  const hasLogin = passwordLoginAllowed && !firstUser;
+  const hasSignup = (passwordLoginAllowed || firstUser) && registrationAllowed;
+  const hasOIDC = oidcConfigured;
+
   useEffect(() => {
-    if (!passwordLoginAllowed && oidcConfigured && tab !== "external") {
-      setTab("external");
+    if (!passwordLoginAllowed && !firstUser) {
+      if (tab === "login" && !hasLogin) {
+        if (hasOIDC) setTab("external");
+        else if (hasSignup) setTab("signup");
+      } else if (tab === "signup" && !hasSignup) {
+        if (hasOIDC) setTab("external");
+        else if (hasLogin) setTab("login");
+      }
     }
-  }, [passwordLoginAllowed, oidcConfigured, tab]);
+  }, [
+    passwordLoginAllowed,
+    firstUser,
+    tab,
+    hasLogin,
+    hasSignup,
+    hasOIDC,
+  ]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1546,7 +1563,8 @@ export function Auth({
                               </>
                             )}
                           </div>
-                        ) : (
+                        ) : (tab === "login" && hasLogin) ||
+                          (tab === "signup" && hasSignup) ? (
                           <form
                             className="flex flex-col gap-5"
                             onSubmit={handleSubmit}
@@ -1642,7 +1660,7 @@ export function Auth({
                               </Button>
                             )}
                           </form>
-                        )}
+                        ) : null}
 
                         <div className="mt-6 pt-4 border-t border-edge space-y-4">
                           <div className="flex items-center justify-between">
