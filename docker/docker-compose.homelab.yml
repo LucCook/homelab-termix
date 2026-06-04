@@ -1,0 +1,41 @@
+# Homelab deploy: build Termix from this repo (dev-2.3.2+ with host-to-host transfer).
+# Usage (from repo root):
+#   docker compose -f docker/docker-compose.homelab.yml build
+#   docker compose -f docker/docker-compose.homelab.yml up -d
+#
+# Data persists in volume termix-data. Back up /app/data before major upgrades.
+
+services:
+  termix:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: homelab-termix:2.3.2
+    container_name: termix
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - termix-data:/app/data
+    environment:
+      PORT: "8080"
+      GUACD_HOST: "guacd"
+    depends_on:
+      - guacd
+    networks:
+      - termix-net
+
+  guacd:
+    image: guacamole/guacd:1.6.0
+    container_name: guacd
+    restart: unless-stopped
+    networks:
+      - termix-net
+
+volumes:
+  termix-data:
+    driver: local
+
+networks:
+  termix-net:
+    driver: bridge

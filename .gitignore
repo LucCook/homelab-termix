@@ -32,4 +32,5 @@ coverage
 electron/build-info.cjs
 /.mcp.json
 /CLAUDE.md
+/pullrequest.md
 /old_db/
